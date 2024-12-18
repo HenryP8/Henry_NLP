@@ -22,18 +22,19 @@ class MyDataset(Dataset):
 class Attention(nn.Module):
     def __init__(self, d_embed, n_heads):
         super(Attention, self).__init__()
-        self.w_q = 0
-        self.w_k = 0
-        self.w_v = 0
+        self.w_q = nn.Linear(d_embed, d_embed)
+        self.w_k = nn.Linear(d_embed, d_embed)
+        self.w_v = nn.Linear(d_embed, d_embed)
+        self.w_o = nn.Linear(d_embed, d_embed)
 
         self.d_embed = d_embed
         self.n_heads = n_heads
         self.d_k = d_embed / n_heads
 
     def split(self, Q, K, V):
-        Q_i = torch.split(Q, 2, 1)
-        K_i = torch.split(K, 2, 1)
-        V_i = torch.split(V, 2, 1)
+        Q_i = torch.split(Q, int(self.d_k), 1)
+        K_i = torch.split(K, int(self.d_k), 1)
+        V_i = torch.split(V, int(self.d_k), 1)
 
         return Q_i, K_i, V_i
 
@@ -57,21 +58,40 @@ class Attention(nn.Module):
         K = self.w_k(x)
         V = self.w_v(x)
 
+        Q_i, K_i, V_i = self.split(Q, K, V)
+
+        QKV_i = [self.scaled_dot_product(Q_i[i], K_i[i], V_i[i]) for i in range(len(Q_i))]
+
+        QKV = self.w_o(self.concat(QKV_i))
+
+        return QKV
+
 
 class FeedForward(nn.Module):
     def __init__(self):
         super(FeedForward, self).__init__()
 
-    def forward(x):
+    def forward(self, x):
         pass
 
 
-att = Attention(2, 2)
-Q = torch.tensor([[.1,.2,.3,.5], [.4,.5,.6,.2]], dtype=torch.float)
-K = torch.tensor([[.6,.3,.2,.3], [.1,.8,.9,.1]], dtype=torch.float)
-V = torch.tensor([[.3,.6,.8,.7], [.1,.2,.5,.9]], dtype=torch.float)
+class Embedder(nn.Module):
+    def __init__(self, dict_size, d_embed):
+        super(FeedForward, self).__init__()
 
-# print(att.scaled_dot_product(Q, K, V))
+        self.embed = nn.Embedding(dict_size, d_embed)
 
-Q_i, K_i, V_i = att.split(Q, K, V)
-print(att.concat(Q_i))
+    def forward(self, x):
+        x = self.embed(x)
+
+        return x
+
+
+att = Attention(6, 2)
+x = torch.tensor([[.1, .6, .9, .2, .3, .8],
+                  [.2, .7, .3, .5, .1, .3],
+                  [.8, .9, .7, .6, .1, .2]])
+print(att(x))
+
+emb = Embedder(20000, 512)
+text = 'this is a test segment of text'
