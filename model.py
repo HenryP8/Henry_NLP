@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 from torch.utils.data import Dataset, DataLoader
 
+from tokenizers import ByteLevelBPETokenizer
+
 import math
 
 
@@ -26,6 +28,8 @@ class Attention(nn.Module):
         self.w_k = nn.Linear(d_embed, d_embed)
         self.w_v = nn.Linear(d_embed, d_embed)
         self.w_o = nn.Linear(d_embed, d_embed)
+
+        self.norm = nn.LayerNorm(d_embed)
 
         self.d_embed = d_embed
         self.n_heads = n_heads
@@ -64,7 +68,9 @@ class Attention(nn.Module):
 
         QKV = self.w_o(self.concat(QKV_i))
 
-        return QKV
+        add_norm = self.norm(QKV + x)
+
+        return add_norm
 
 
 class FeedForward(nn.Module):
@@ -77,7 +83,7 @@ class FeedForward(nn.Module):
 
 class Embedder(nn.Module):
     def __init__(self, dict_size, d_embed):
-        super(FeedForward, self).__init__()
+        super(Embedder, self).__init__()
 
         self.embed = nn.Embedding(dict_size, d_embed)
 
@@ -87,11 +93,22 @@ class Embedder(nn.Module):
         return x
 
 
-att = Attention(6, 2)
-x = torch.tensor([[.1, .6, .9, .2, .3, .8],
-                  [.2, .7, .3, .5, .1, .3],
-                  [.8, .9, .7, .6, .1, .2]])
-print(att(x))
+vocab_size = 20000
+embedding_size = 512
+num_heads = 8
 
-emb = Embedder(20000, 512)
-text = 'this is a test segment of text'
+emb = Embedder(vocab_size, embedding_size)
+text = 'this is a test segment of a text'
+tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
+
+tokens = tokenizer.encode(text)
+token_texts = tokens.tokens
+token_ids = torch.tensor(tokens.ids)
+print(token_texts, token_ids)
+
+embedding = emb(token_ids)
+print(embedding, embedding.shape)
+
+att = Attention(embedding_size, num_heads)
+attention = att(embedding)
+print(attention, attention.shape)
