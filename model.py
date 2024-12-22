@@ -44,12 +44,18 @@ class Attention(nn.Module):
 
     def scaled_dot_product(self, Q, K, V):
         QK = torch.matmul(Q, torch.transpose(K, 0, 1))
-        scaled_QK = QK / math.sqrt(self.d_k)
+        masked_QK = self.mask(QK)
+        scaled_QK = masked_QK / math.sqrt(self.d_k)
         scaled_QK = torch.softmax(scaled_QK, dim=1)
         QKV = torch.matmul(scaled_QK, V)
 
         return QKV
-    
+
+    def mask(self,A):
+        mask = torch.tril(torch.ones(A.shape))
+        masked = A.masked_fill(mask==0, float('-inf'))
+        return masked
+
     def concat(self, res_i):
         ret = res_i[0]
         for res in res_i[1:]:
@@ -82,22 +88,43 @@ class FeedForward(nn.Module):
 
 
 class Embedder(nn.Module):
-    def __init__(self, dict_size, d_embed):
+    def __init__(self, dict_size, d_embed, context_window):
         super(Embedder, self).__init__()
 
+        self.context_window = context_window
+
         self.embed = nn.Embedding(dict_size, d_embed)
+        self.pe = torch.zeros(context_window, d_embed)
+
+        pos = torch.arange(context_window)
+        pos = pos.view(context_window, -1)
+        pos = pos.expand(context_window, int(d_embed / 2))
+
+        odd_denom = torch.arange(1, d_embed, 2)
+        odd_denom = torch.sub(odd_denom, 1)
+        odd_denom = torch.div(odd_denom, d_embed)
+        odd_denom = torch.pow(10000, odd_denom)
+
+        even_denom = torch.arange(0, d_embed, 2)
+        even_denom = torch.div(even_denom, d_embed)
+        even_denom = torch.pow(10000, even_denom)
+
+        self.pe[:, 0::2] = torch.sin(torch.div(pos, even_denom))
+        self.pe[:, 1::2] = torch.cos(torch.div(pos, odd_denom))
 
     def forward(self, x):
+        x = F.pad(x, (0, self.context_window - x.shape[0]), 'constant', 0)
         x = self.embed(x)
 
-        return x
+        return x + self.pe
 
 
 vocab_size = 20000
 embedding_size = 512
 num_heads = 8
+context_window = 100
 
-emb = Embedder(vocab_size, embedding_size)
+emb = Embedder(vocab_size, embedding_size, context_window)
 text = 'this is a test segment of a text'
 tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
 

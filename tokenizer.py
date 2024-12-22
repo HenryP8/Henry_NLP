@@ -13,9 +13,8 @@ from tokenizers import ByteLevelBPETokenizer
 # f.close()
 
 tokenizer = ByteLevelBPETokenizer()
-tokenizer.train('./data/summaries.txt', vocab_size=20000)
+tokenizer.train('./data/summaries.txt', vocab_size=20000, special_tokens=['<PAD>', '<MASK>'])
 
 tokenizer.save_model('./models/tokenizer')
 
-# tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
-# print(tokenizer.get_vocab_size())
+tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
