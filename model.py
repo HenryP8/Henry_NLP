@@ -54,13 +54,12 @@ class Attention(nn.Module):
     def mask(self,A):
         mask = torch.tril(torch.ones(A.shape))
         masked = A.masked_fill(mask==0, float('-inf'))
+
         return masked
 
     def concat(self, res_i):
-        ret = res_i[0]
-        for res in res_i[1:]:
-            ret = torch.cat((ret, res), 1)
-
+        ret = torch.cat(res_i, 1)
+        
         return ret
 
     def forward(self, x):
@@ -133,7 +132,7 @@ class Embedder(nn.Module):
 vocab_size = 20000
 embedding_size = 512
 num_heads = 8
-context_window = 100
+context_window = 128
 ff_hidden_size = 1024
 
 emb = Embedder(vocab_size, embedding_size, context_window)
