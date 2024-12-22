@@ -80,11 +80,22 @@ class Attention(nn.Module):
 
 
 class FeedForward(nn.Module):
-    def __init__(self):
+    def __init__(self, d_embed, hidden):
         super(FeedForward, self).__init__()
 
+        self.norm = nn.LayerNorm(d_embed)
+        self.l1 = nn.Linear(d_embed, hidden)
+        self.l2 = nn.Linear(hidden, d_embed)
+        self.gelu = nn.GELU()
+
     def forward(self, x):
-        pass
+        ret = self.l1(x)
+        ret = self.gelu(ret)
+        ret = self.l2(ret)
+
+        ret = self.norm(ret + x)
+
+        return ret
 
 
 class Embedder(nn.Module):
@@ -123,6 +134,7 @@ vocab_size = 20000
 embedding_size = 512
 num_heads = 8
 context_window = 100
+ff_hidden_size = 1024
 
 emb = Embedder(vocab_size, embedding_size, context_window)
 text = 'this is a test segment of a text'
@@ -139,3 +151,7 @@ print(embedding, embedding.shape)
 att = Attention(embedding_size, num_heads)
 attention = att(embedding)
 print(attention, attention.shape)
+
+ff = FeedForward(embedding_size, ff_hidden_size)
+res = ff(attention)
+print(res, res.shape)
