@@ -129,28 +129,57 @@ class Embedder(nn.Module):
         return x + self.pe
 
 
-vocab_size = 20000
-embedding_size = 512
-num_heads = 8
-context_window = 128
-ff_hidden_size = 1024
+class Transformer(nn.Module):
+    def __init__(self, n_blocks, d_embed, n_heads, hidden, dict_size, context_window):
+        super(Transformer, self).__init__()
 
-emb = Embedder(vocab_size, embedding_size, context_window)
-text = 'this is a test segment of a text'
-tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
+        self.n_blocks = n_blocks
+        self.block = nn.Sequential(
+            Attention(d_embed, n_heads), 
+            FeedForward(d_embed, hidden)
+        )
+        self.embedder = Embedder(dict_size, d_embed, context_window)
+        self.linear = nn.Linear(d_embed, dict_size)
 
-tokens = tokenizer.encode(text)
-token_texts = tokens.tokens
-token_ids = torch.tensor(tokens.ids)
-print(token_texts, token_ids)
+    def forward(self, x):
+        x = self.embedder(x)
+        for _ in range(self.n_blocks):
+            x = self.block(x)
+        x = self.linear(x)
+        x = F.softmax(x)
 
-embedding = emb(token_ids)
-print(embedding, embedding.shape)
+        return x
 
-att = Attention(embedding_size, num_heads)
-attention = att(embedding)
-print(attention, attention.shape)
 
-ff = FeedForward(embedding_size, ff_hidden_size)
-res = ff(attention)
-print(res, res.shape)
+# vocab_size = 20000
+# embedding_size = 512
+# num_heads = 8
+# num_blocks = 6
+# context_window = 128
+# ff_hidden_size = 1024
+
+# emb = Embedder(vocab_size, embedding_size, context_window)
+# text = 'this is a test segment of a text'
+# tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
+
+# tokens = tokenizer.encode(text)
+# token_texts = tokens.tokens
+# token_ids = torch.tensor(tokens.ids)
+# print(token_texts, token_ids)
+
+# transformer = Transformer(num_blocks, embedding_size, num_heads, ff_hidden_size, vocab_size, context_window)
+# logits = transformer(token_ids)
+# print(logits, logits.shape)
+# print(logits[-1])
+# print(torch.argmax(logits[-1]))
+
+# embedding = emb(token_ids)
+# print(embedding, embedding.shape)
+
+# att = Attention(embedding_size, num_heads)
+# attention = att(embedding)
+# print(attention, attention.shape)
+
+# ff = FeedForward(embedding_size, ff_hidden_size)
+# res = ff(attention)
+# print(res, res.shape)
