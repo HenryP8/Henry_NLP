@@ -22,7 +22,7 @@ class MyDataset(Dataset):
     
 
 class Attention(nn.Module):
-    def __init__(self, d_embed, n_heads):
+    def __init__(self, d_embed, n_heads, device):
         super(Attention, self).__init__()
         self.w_q = nn.Linear(d_embed, d_embed)
         self.w_k = nn.Linear(d_embed, d_embed)
@@ -34,6 +34,8 @@ class Attention(nn.Module):
         self.d_embed = d_embed
         self.n_heads = n_heads
         self.d_k = d_embed / n_heads
+
+        self.device = device
 
     def split(self, Q, K, V):
         Q_i = torch.split(Q, int(self.d_k), 1)
@@ -52,7 +54,7 @@ class Attention(nn.Module):
         return QKV
 
     def mask(self,A):
-        mask = torch.tril(torch.ones(A.shape))
+        mask = torch.tril(torch.ones(A.shape)).to(self.device)
         masked = A.masked_fill(mask==0, float('-inf'))
 
         return masked
@@ -98,24 +100,24 @@ class FeedForward(nn.Module):
 
 
 class Embedder(nn.Module):
-    def __init__(self, dict_size, d_embed, context_window):
+    def __init__(self, dict_size, d_embed, context_window, device):
         super(Embedder, self).__init__()
 
         self.context_window = context_window
 
         self.embed = nn.Embedding(dict_size, d_embed)
-        self.pe = torch.zeros(context_window, d_embed)
+        self.pe = torch.zeros(context_window, d_embed).to(device)
 
-        pos = torch.arange(context_window)
+        pos = torch.arange(context_window).to(device)
         pos = pos.view(context_window, -1)
         pos = pos.expand(context_window, int(d_embed / 2))
 
-        odd_denom = torch.arange(1, d_embed, 2)
+        odd_denom = torch.arange(1, d_embed, 2).to(device)
         odd_denom = torch.sub(odd_denom, 1)
         odd_denom = torch.div(odd_denom, d_embed)
         odd_denom = torch.pow(10000, odd_denom)
 
-        even_denom = torch.arange(0, d_embed, 2)
+        even_denom = torch.arange(0, d_embed, 2).to(device)
         even_denom = torch.div(even_denom, d_embed)
         even_denom = torch.pow(10000, even_denom)
 
@@ -130,15 +132,15 @@ class Embedder(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, n_blocks, d_embed, n_heads, hidden, dict_size, context_window):
+    def __init__(self, n_blocks, d_embed, n_heads, hidden, dict_size, context_window, device):
         super(Transformer, self).__init__()
 
         self.n_blocks = n_blocks
         self.block = nn.Sequential(
-            Attention(d_embed, n_heads), 
+            Attention(d_embed, n_heads, device), 
             FeedForward(d_embed, hidden)
         )
-        self.embedder = Embedder(dict_size, d_embed, context_window)
+        self.embedder = Embedder(dict_size, d_embed, context_window, device)
         self.linear = nn.Linear(d_embed, dict_size)
 
     def forward(self, x):
