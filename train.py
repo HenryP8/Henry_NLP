@@ -6,52 +6,74 @@ from torch.utils.data import Dataset, DataLoader
 
 from tokenizers import ByteLevelBPETokenizer
 
+import matplotlib.pyplot as plt
+
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
 import math
+import random
+import time
 
-from model import MyDataset, Embedder, Transformer
+from model import Transformer
+from tokenizer import CharacterTokenizer
+
+with open('./data/summaries.txt', 'r', encoding='utf-8') as f:
+    words = list(f.read())
 
 
-vocab_size = 20000
-embedding_size = 512
-num_heads = 8
-num_blocks = 6
-context_window = 100
-ff_hidden_size = 1024
-batch_size = 1
+def get_data(data, batch_size, context_window):
+    sample_points = torch.randint(1, len(data)-context_window-1, (batch_size,))
 
+    samples = [torch.tensor(data[sp:sp+context_window]) for sp in sample_points]
+    targets = [torch.tensor(data[sp+1:sp+context_window+1]) for sp in sample_points]
+    x = torch.stack(samples)
+    y = torch.stack(targets)
+
+    return x, y
+
+
+tokenizer = CharacterTokenizer(words)
+data = tokenizer.encode(words)
+
+num_epochs = 5000
+lr = 3e-4
+context_window = 128
+batch_size = 64
+dict_size = tokenizer.get_dict_size()
+
+n_blocks = 6
+d_embed = 512
+n_heads = 8
+hidden = 2048
 device = 'cuda'
 
-df = pd.read_pickle('./data/book_summary.pkl')
-train_data = df['summary'].to_numpy()
-data = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-
-tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
-transformer = Transformer(num_blocks, embedding_size, num_heads, ff_hidden_size, vocab_size, context_window, device).to(device)
-
-optimizer = torch.optim.Adam(transformer.parameters(), lr=0.0000001)
+model = Transformer(n_blocks, d_embed, n_heads, hidden, dict_size, device).to(device)
+optim = torch.optim.Adam(model.parameters(), lr=lr)
 loss_fn = nn.CrossEntropyLoss()
 
-for idx, text in enumerate(tqdm(data)):
-    tokens = torch.tensor(tokenizer.encode(text[0]).ids).to(device)
+losses = []
 
-    if len(tokens) <= context_window:
-        continue
+for i in tqdm(range(num_epochs)):
 
-    next_token = tokens[context_window]
-    tokens = tokens[:context_window]
-    logits = transformer(tokens)
+    train, target = get_data(data, batch_size, context_window)
+    train, target = train.to(device), target.to(device)
 
-    pred = logits[-1]
+    pred = model(train)
 
-    target = torch.zeros(20000).to(device)
-    target[int(next_token)] = 1
+    loss = loss_fn(pred.view(batch_size*context_window, -1), target.view(batch_size*context_window))
 
-    loss = loss_fn(pred, target)
+    if i % 500 == 0 or num_epochs-i <= 1:
+        print()
+        print(i, loss.item())
 
-    optimizer.zero_grad()
+    losses.append(loss.item())
+
+    optim.zero_grad()
     loss.backward()
-    optimizer.step()
+    optim.step()
+
+cur_t = time.time()
+torch.save(model.state_dict(), f'./models/transformer/{cur_t}.pth')
+np.save(f'models/loss/{cur_t}.npy', np.array(losses))
