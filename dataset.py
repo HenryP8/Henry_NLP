@@ -1,13 +1,21 @@
 import pandas as pd
+import numpy as np
+import pickle as pkl
 
-with open('./data/booksummaries.txt', errors="ignore") as f:
-    lines = f.readlines()
+from tokenizer import CharacterTokenizer
+from tokenizers import ByteLevelBPETokenizer
 
-titles = [l.split('\t')[2] for l in lines]
-summaries = [l.split('\t')[-1] for l in lines]
 
-df = pd.DataFrame({'title': titles, 'summary': summaries})
+with open('./data/summaries.txt', 'r', encoding='utf-8') as f:
+    words = f.read()
 
-print(df)
+# tokenizer = CharacterTokenizer(words)
+# tokens = tokenizer.encode(words)
+# with open('./models/tokenizer/character_tokenizer.pkl', 'wb') as f:
+#     pkl.dump(tokenizer, f)
 
-df.to_pickle('./data/book_summary.pkl')
+tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
+tokens = tokenizer.encode(words)
+ids = tokens.ids
+
+np.save(f'./data/token/PBE_tokenizer.npy', np.array(ids))

@@ -1,3 +1,6 @@
+import os
+import pickle as pkl
+
 import pandas as pd
 
 from tqdm import tqdm
@@ -17,20 +20,42 @@ class CharacterTokenizer():
     def decode(self, nums):
         return [self.int_to_str[n] for n in nums]
     
-    def get_dict_size(self):
+    def get_vocab_size(self):
         return len(self.chars)
+    
+    def get_tokenizer(self):
+        with open('./models/tokenizer/character_tokenizer.pkl', 'rb') as f:
+            tokenizer = pkl.load(f)
+        return tokenizer
 
 
-# tokenizer = ByteLevelBPETokenizer()
-# tokenizer.train('./data/summaries.txt', vocab_size=700, special_tokens=['<PAD>', '<MASK>'])
+class BPETokenizer():
+    def __init__(self, fn, vocab_size):
+        self.fn = fn
+        self.vocab_size = vocab_size
+        self.tokenizer = self.get_tokenizer()
 
-# text = ' Haggai\'s message is filled with an urgency for the people to proceed with the rebuilding of the second Jerusalem temple. Haggai attributes a recent drought to the peoples\' refusal to rebuild the temple, which he sees as key to Jerusalemâ€™s glory. The book ends with the prediction of the downfall of kingdoms, with one Zerubbabel, governor of Judah, as the Lordâ€™s chosen leader. The language here is not as finely wrought as in some other books of the minor prophets, yet the intent seems straightforward.'
-# print(tokenizer.encode(text).tokens)
+    def train(self):
+        tokenizer = ByteLevelBPETokenizer()
+        tokenizer.train(self.fn, vocab_size=self.vocab_size, special_tokens=['<PAD>', '<MASK>'])
 
-# with open('./data/summaries.txt', 'r', encoding='utf-8') as f:
-#     data = list(f.read())
-#     print(tokenizer.encode(data).tokens)
+        dir_path = f'./models/{self.vocab_size}_BPE_tokenizer'
+        if os.path.isdir(dir_path):
+            tokenizer.save_model(dir_path)
+        else:
+            os.mkdir(dir_path)
+            tokenizer.save_model(dir_path)
 
-# tokenizer.save_model('./models/tokenizer')
+    def get_tokenizer(self):
+        tokenizer = ByteLevelBPETokenizer.from_file(f'./models/{self.vocab_size}_BPE_tokenizer/vocab.json', 
+                                                    f'./models/{self.vocab_size}_BPE_tokenizer/merges.txt')
+        return tokenizer
+    
+    def get_vocab_size(self):
+        return self.tokenizer.get_vocab_size()
+    
+    def encode(self, x):
+        return self.tokenizer.encode(x).ids
 
-# tokenizer = ByteLevelBPETokenizer.from_file('./models/tokenizer/vocab.json', './models/tokenizer/merges.txt')
+    def decode(self, y):
+        return self.tokenizer.decode(y)

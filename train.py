@@ -2,10 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.utils.data import Dataset, DataLoader
-
-from tokenizers import ByteLevelBPETokenizer
-
 import matplotlib.pyplot as plt
 
 import pandas as pd
@@ -15,12 +11,10 @@ from tqdm import tqdm
 import math
 import random
 import time
+import pickle as pkl
 
 from model import Transformer
-from tokenizer import CharacterTokenizer
-
-with open('./data/summaries.txt', 'r', encoding='utf-8') as f:
-    words = list(f.read())
+from tokenizer import CharacterTokenizer, BPETokenizer
 
 
 def get_data(data, batch_size, context_window):
@@ -34,14 +28,14 @@ def get_data(data, batch_size, context_window):
     return x, y
 
 
-tokenizer = CharacterTokenizer(words)
-data = tokenizer.encode(words)
+tokenizer = BPETokenizer('./data/summaries.txt', 700)
+data = np.load('./data/token/PBE_tokenizer.npy')
 
 num_epochs = 5000
 lr = 3e-4
 context_window = 128
 batch_size = 64
-dict_size = tokenizer.get_dict_size()
+dict_size = tokenizer.get_vocab_size()
 
 n_blocks = 6
 d_embed = 512

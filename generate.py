@@ -2,10 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.utils.data import Dataset, DataLoader
-
-from tokenizers import ByteLevelBPETokenizer
-
 import matplotlib.pyplot as plt
 
 import pandas as pd
@@ -15,18 +11,16 @@ from tqdm import tqdm
 import math
 import random
 import time
+import pickle as pkl
 
 from model import Transformer
-from tokenizer import CharacterTokenizer
+from tokenizer import CharacterTokenizer, BPETokenizer
 
 
-with open('./data/summaries.txt', 'r', encoding='utf-8') as f:
-    words = list(f.read())
-tokenizer = CharacterTokenizer(words)
-
+tokenizer = BPETokenizer('./data/summaries.txt', 700)
 
 context_window = 128
-dict_size = tokenizer.get_dict_size()
+dict_size = tokenizer.get_vocab_size()
 n_blocks = 6
 d_embed = 512
 n_heads = 8
@@ -34,10 +28,11 @@ hidden = 2048
 device = 'cuda'
 
 model = Transformer(n_blocks, d_embed, n_heads, hidden, dict_size, device).to(device)
-model.load_state_dict(torch.load('./models/transformer/1735253654.015008.pth', weights_only=True))
+model.load_state_dict(torch.load('./models/transformer/1735428634.523057.pth', weights_only=True))
 model.eval()
 
-tokens = torch.tensor([[0]]).to(device)
+start = tokenizer.encode('\n')
+tokens = torch.tensor([start]).to(device)
 
 for _ in tqdm(range(500)):
     pred = model(tokens[:, -context_window:])
