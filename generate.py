@@ -14,10 +14,11 @@ import time
 import pickle as pkl
 
 from model import Transformer
-from tokenizer import CharacterTokenizer, BPETokenizer
+from tokenizer import CharacterTokenizer, BPETokenizer, PretrainedTokenizer
 
 
-tokenizer = BPETokenizer('./data/summaries.txt', 700)
+# tokenizer = BPETokenizer('./data/summaries.txt', 700)
+tokenizer = PretrainedTokenizer()
 
 context_window = 128
 dict_size = tokenizer.get_vocab_size()
@@ -28,13 +29,13 @@ hidden = 2048
 device = 'cuda'
 
 model = Transformer(n_blocks, d_embed, n_heads, hidden, dict_size, device).to(device)
-model.load_state_dict(torch.load('./models/transformer/1735428634.523057.pth', weights_only=True))
+model.load_state_dict(torch.load('./models/transformer/1735540711.188275.pth', weights_only=True))
 model.eval()
 
 start = tokenizer.encode('\n')
 tokens = torch.tensor([start]).to(device)
 
-for _ in tqdm(range(500)):
+for _ in tqdm(range(100)):
     pred = model(tokens[:, -context_window:])
     pred = pred[:, -1, :]
 

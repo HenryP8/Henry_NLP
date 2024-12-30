@@ -5,7 +5,7 @@ import pandas as pd
 
 from tqdm import tqdm
 
-from tokenizers import ByteLevelBPETokenizer
+from tokenizers import ByteLevelBPETokenizer, Tokenizer
     
 
 class CharacterTokenizer():
@@ -54,6 +54,23 @@ class BPETokenizer():
     def get_vocab_size(self):
         return self.tokenizer.get_vocab_size()
     
+    def encode(self, x):
+        return self.tokenizer.encode(x).ids
+
+    def decode(self, y):
+        return self.tokenizer.decode(y)
+    
+
+class PretrainedTokenizer():
+    def __init__(self):
+        self.tokenizer = Tokenizer.from_pretrained("bert-base-cased")
+
+    def get_tokenizer(self):
+        return self.tokenizer
+
+    def get_vocab_size(self):
+        return self.tokenizer.get_vocab_size()
+
     def encode(self, x):
         return self.tokenizer.encode(x).ids
 

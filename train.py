@@ -14,7 +14,7 @@ import time
 import pickle as pkl
 
 from model import Transformer
-from tokenizer import CharacterTokenizer, BPETokenizer
+from tokenizer import CharacterTokenizer, BPETokenizer, PretrainedTokenizer
 
 
 def get_data(data, batch_size, context_window):
@@ -28,10 +28,13 @@ def get_data(data, batch_size, context_window):
     return x, y
 
 
-tokenizer = BPETokenizer('./data/summaries.txt', 700)
-data = np.load('./data/token/PBE_tokenizer.npy')
+# tokenizer = BPETokenizer('./data/summaries.txt', 700)
+# data = np.load('./data/token/PBE_tokenizer.npy')
 
-num_epochs = 5000
+tokenizer = PretrainedTokenizer()
+data = np.load('./data/token/Pretrained_tokenizer.npy')
+
+num_epochs = 15000
 lr = 3e-4
 context_window = 128
 batch_size = 64
@@ -58,7 +61,7 @@ for i in tqdm(range(num_epochs)):
 
     loss = loss_fn(pred.view(batch_size*context_window, -1), target.view(batch_size*context_window))
 
-    if i % 500 == 0 or num_epochs-i <= 1:
+    if i % 250 == 0 or num_epochs-i <= 1:
         print()
         print(i, loss.item())
 
