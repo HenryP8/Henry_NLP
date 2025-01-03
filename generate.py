@@ -17,6 +17,25 @@ from model import Transformer
 from tokenizer import CharacterTokenizer, BPETokenizer, PretrainedTokenizer
 
 
+def top_p_sample(probs, p):
+    vals, idx = torch.sort(probs[0], descending=True)
+    tokens = idx.detach().cpu().numpy()
+
+    i = 0
+    sum = 0
+    while sum < p:
+        sum += vals[i]
+        i += 1
+
+    top_p_vals = vals[:i]
+    top_p_tokens = tokens[:i]
+
+    next_index = torch.multinomial(top_p_vals, num_samples=1)
+    next_token = top_p_tokens[next_index.item()]
+
+    return next_token
+
+
 # tokenizer = BPETokenizer('./data/summaries.txt', 700)
 tokenizer = PretrainedTokenizer()
 
@@ -29,10 +48,13 @@ hidden = 2048
 device = 'cuda'
 
 model = Transformer(n_blocks, d_embed, n_heads, hidden, dict_size, device).to(device)
+
+print(sum(p.numel() for p in model.parameters()))
+
 model.load_state_dict(torch.load('./models/transformer/1735540711.188275.pth', weights_only=True))
 model.eval()
 
-start = tokenizer.encode('\n')
+start = tokenizer.encode('. ')
 tokens = torch.tensor([start]).to(device)
 
 for _ in tqdm(range(100)):
@@ -41,7 +63,8 @@ for _ in tqdm(range(100)):
 
     probs = F.softmax(pred, dim=1)
 
-    next_token = torch.multinomial(probs, num_samples=1)
+    next_token = top_p_sample(probs, 0.7)
+    next_token = torch.tensor([[next_token]]).to('cuda')
 
     tokens = torch.cat((tokens, next_token), dim=1)
 

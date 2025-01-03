@@ -40,7 +40,7 @@ context_window = 128
 batch_size = 64
 dict_size = tokenizer.get_vocab_size()
 
-n_blocks = 6
+n_blocks = 8
 d_embed = 512
 n_heads = 8
 hidden = 2048
