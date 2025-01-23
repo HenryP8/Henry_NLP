@@ -5,7 +5,7 @@ I make a decoder-only transformer based on the 2017 paper "Attention is all you 
 I created a decoder-only transformer, mostly following implementation details in the 2017 paper "Attention is all you need" by Vaswani el al..
 
 ### Data
-I used the CMU book summary dataset found [Here](https://www.cs.cmu.edu/~dbamman/booksummaries.html). This dataset was chosen because it is relatively small (compared to the internet) and focused on a subset of English, which I hoped the transformer could pick up.
+I used the CMU book summary dataset. This dataset was chosen because it is relatively small (compared to the internet) and focused on a subset of English, which I hoped the transformer could pick up.
 
 ### Tokenization
 A pretrained HuggingFace tokenizer was used. I also tried with other tokenizers, but due to the limited size of the data, I beleive the pretrained tokenzier would more accurately describe English than a tokenizer trained specially on the dataset.
